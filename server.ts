@@ -114,8 +114,28 @@ async function startServer() {
   });
 
   // ---------------- PRODUCTS CRUD ----------------
-  app.get('/api/products', requireAdmin, (_req, res) => {
-    res.json({ products: retailStore.getData().products });
+  app.get('/api/products', requireAdmin, (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
+    const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+    const season = typeof req.query.season === 'string' ? req.query.season.trim() : '';
+
+    let products = retailStore.getData().products;
+    if (q) {
+      products = products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          p.color.toLowerCase().includes(q),
+      );
+    }
+    if (category && category !== 'All') {
+      products = products.filter((p) => p.category === category);
+    }
+    if (season && season !== 'All') {
+      products = products.filter((p) => p.season === season);
+    }
+
+    res.json({ products });
   });
 
   app.post('/api/products', requireAdmin, (req, res) => {

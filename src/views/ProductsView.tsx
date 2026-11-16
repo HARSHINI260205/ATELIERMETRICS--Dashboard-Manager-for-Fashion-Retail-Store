@@ -48,10 +48,15 @@ export function ProductsView({ refreshSignal, onDataChanged }: ProductsViewProps
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const loadProducts = async () => {
+  const loadProducts = async (qVal = search, catVal = categoryFilter, seaVal = seasonFilter) => {
     setLoading(true);
     try {
-      const res = await apiFetch<{ products: Product[] }>('/api/products');
+      const params = new URLSearchParams();
+      if (qVal.trim()) params.set('q', qVal.trim());
+      if (catVal !== 'All') params.set('category', catVal);
+      if (seaVal !== 'All') params.set('season', seaVal);
+      const qs = params.toString();
+      const res = await apiFetch<{ products: Product[] }>(`/api/products${qs ? `?${qs}` : ''}`);
       setProducts(res.products);
     } finally {
       setLoading(false);
@@ -59,22 +64,13 @@ export function ProductsView({ refreshSignal, onDataChanged }: ProductsViewProps
   };
 
   useEffect(() => {
-    loadProducts();
-  }, [refreshSignal]);
+    const timer = setTimeout(() => {
+      loadProducts(search, categoryFilter, seasonFilter);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [refreshSignal, search, categoryFilter, seasonFilter]);
 
-  const filtered = useMemo(() => {
-    return products.filter((p) => {
-      const q = search.trim().toLowerCase();
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.color.toLowerCase().includes(q);
-      const matchesCat = categoryFilter === 'All' || p.category === categoryFilter;
-      const matchesSeason = seasonFilter === 'All' || p.season === seasonFilter;
-      return matchesSearch && matchesCat && matchesSeason;
-    });
-  }, [products, search, categoryFilter, seasonFilter]);
+  const filtered = useMemo(() => products, [products]);
 
   const openAddModal = () => {
     setEditing(null);
